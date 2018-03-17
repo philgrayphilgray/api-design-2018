@@ -297,3 +297,176 @@ app.use(
   })
 );
 ```
+
+* When you return an object from the resolvers, and properties match up with the types in your graphql, graphql takes it from there; if they don't match up, you need to write a resolver for that
+
+### Resolvers
+
+* Functions to resolve data for schema
+* A resolver takes 4 arguments: the `rootValue` (optional - for nested resolvers, or per request caching), then an object of all the arguments for the given resolver, then the `context` object (the request that was coming in), and finally the `info`, which is the raw ast (for advanced use). Args and context are the most commonly used arguments.
+* Export the resolver with a `Query` in it; the queries should match the definitions in type Query in the schema
+* Nested resolvers: only going to run when someone asks for that field;
+
+```js
+// user.graphql
+type User {
+    id: ID!
+    friends: [String]!
+    username: String!
+}
+
+input UpdatedUser{
+    username: String!
+}
+
+type Query {
+    getMe: User!
+}
+
+// user.resolvers.js
+
+const getMe = (rootValue, args, context, info) => {
+    return {
+        id: 34435435
+        username: "Bob"
+    }
+}
+
+export const userResolvers = {
+  Query: {
+    getMe
+  },
+  User: {
+    friends: user => {
+      // query db for friends of this user
+      return ["Amy, Michael"]
+    }
+  }
+};
+```
+
+* In subsequent graphql files, when defining `type Query`, use the `extend` keyword
+* Import resolvers into graphQLRouter
+* Include them in the `merge` function inside of resolvers inside `makeExecutableSchema()`
+
+### Mutations
+
+* Use whenever you need to make a change to a data source
+* POST / PUT / DELETE requests
+* Usually takes arguments
+* Think about what your clients needs as a response from the result of the input; you are creating something, but you're also asking for something back; at minimum, you need an id and the things you updated, or the whole object
+* Can only do one mutation at a time (you can do multiple queries in one request)
+* Must have resolvers
+
+* In GraphiQL, use the `mutation` keyword followed by the operation; you give it a variable, prefixed by the `$`, and you have to give it the exact same type as in the mutation
+
+```js
+mutation CreateSong($input: NewSong!){
+    newSong(input: $input)
+}
+
+// query variables
+{
+    "input": {"title": "Test", "artist": "ArtistName", "url": "http://fakeurl.com"}
+}
+```
+
+* The process for creating a mutation in graphql is the same as for creating a query, the only difference is how you resolve it
+* Define `type Mutation` in one place, and `extend` it in other files
+* The mutations resolvers have the same syntax; you're just performing some Create, Update, Delete operation instead of a Read operation
+
+### Nested Resolvers
+
+Non scalars:
+
+* Custom types
+* Objects
+* Can be used wherever scalar types are used
+* Must be resolved eventually
+
+Nested resolvers:
+
+* Used to create the "graph" in your api
+* take the parent branch as the root value
+* only executed when the query asks for it
+* Add console.log to trace
+
+```js
+export const playlistResolvers = {
+  Query: {
+    allPlaylists,
+    Playlist: getPlaylist
+  },
+
+  Mutation: {
+    newPlaylist,
+    updatePlaylist
+  },
+
+  // example
+  Playlist: {
+    async songs(playlist) {
+      console.log('getting songs');
+      const populated = await playlist.populate('songs').execPopulate();
+
+      return populated.songs;
+    }
+  }
+};
+```
+
+### Protecting Resolvers and Testing
+
+* Move the functionality from global middleware to a per-resolver basis
+* Authenticate on every resolver
+* Testing: we don't have to run a server, don't have to go through express
+* Test pure graphql: execute query and inspect response and DB activity
+* Use the raw graphql library: `import {graphql} from 'graphql'`
+
+```js
+export const runQuery = async (query, variables, user) => {
+  return graphql(schema, query, {}, { user }, variables);
+};
+```
+
+* With this one function that returns a promise, we can execute our entire schema without a server; it returns a promise and resolves the values
+* Include `beforeEach` and `afterEach` to `dropDb()` each time
+* Just pass in a query, exactly the same as you would in graphiql, but as a string to `runQuery`, and you get back an object just like you would in graphiql
+
+```js
+describe('User', () => {
+  let user;
+  beforeEach(async () => {
+    await dropDb();
+    user = await User.create({ username: 'stu1', passwordHash: '123' });
+  });
+
+  afterEach(async () => {
+    await dropDb();
+  });
+
+  it('should get me', async () => {
+    const result = await runQuery(
+      `
+      {
+        getMe {
+          id
+          username
+        }
+      }
+    `,
+      {},
+      user
+    );
+
+    expect(result.errors).to.not.exist;
+    expect(result.data.getMe).to.be.an('object');
+    expect(result.data.getMe.id).to.eql(user.id.toString());
+  });
+});
+```
+
+### Rest and GraphQL
+
+* REST next to GraphQL
+* Convert REST to GraphQL: take incoming REST request and create a query on the fly; run query against graphql schema
