@@ -4,9 +4,7 @@ mongoose.Promise = global.Promise;
 const env = process.env.NODE_ENV || 'development';
 const databaseUrl =
   process.env.DATABASE_URL || `mongodb://localhost/albumCollector_${env}`;
-const options = {
-  useMongoClient: true
-};
+const options = {};
 
 module.exports = {
   mongoose,
