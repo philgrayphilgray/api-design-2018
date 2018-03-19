@@ -17,6 +17,38 @@ afterEach(async () => {
   await mongoose.disconnect();
 });
 
+describe('Server path: `/`', () => {
+  describe('GET', () => {
+    it('should return all albums in the database', async () => {
+      // seed the database
+      const firstAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      const secondAlbum = {
+        title: 'Lanquidity',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(firstAlbum);
+
+      await request(app)
+        .post('/create')
+        .send(secondAlbum);
+
+      // request all
+
+      const response = await request(app).get('/');
+
+      assert.include(JSON.stringify(response.body), firstAlbum.title);
+      assert.include(JSON.stringify(response.body), secondAlbum.title);
+    });
+  });
+});
+
 describe('Server path: `/create`', () => {
   describe('POST', () => {
     it('should return a `201` status code when creating a new album', async () => {
