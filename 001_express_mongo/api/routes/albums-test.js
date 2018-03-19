@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 describe('Server path: `/create`', () => {
-  describe('POST', async () => {
+  describe('POST', () => {
     it('should return a `201` status code when creating a new album', async () => {
       const newAlbum = {
         title: 'Space Is the Place',
@@ -29,6 +29,21 @@ describe('Server path: `/create`', () => {
         .send(newAlbum);
 
       assert.equal(response.status, 201);
+    });
+
+    it('should save the new album to the database', async () => {
+      const newAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      const response = await request(app)
+        .post('/create')
+        .send(newAlbum);
+
+      const createdAlbum = await Album.findOne(newAlbum);
+
+      assert.isOk(createdAlbum);
     });
   });
 });
