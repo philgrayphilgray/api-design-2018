@@ -18,7 +18,7 @@ afterEach(async () => {
 
 describe('Server path: `/create`', () => {
   describe('POST', async () => {
-    it('should add a new album to the database', async () => {
+    it('should return a `201` status code when creating a new album', async () => {
       const newAlbum = {
         title: 'Space Is the Place',
         artist: 'Sun Ra'
@@ -26,7 +26,6 @@ describe('Server path: `/create`', () => {
 
       const response = await request(app)
         .post('/create')
-        .type('json')
         .send(newAlbum);
 
       assert.equal(response.status, 201);
