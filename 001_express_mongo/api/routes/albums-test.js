@@ -2,6 +2,7 @@ const { assert } = require('chai');
 const request = require('supertest');
 
 const app = require('../../app');
+const Album = require('../models/album');
 const { mongoose, databaseUrl, options } = require('../../database');
 
 // setup and teardown utilities
