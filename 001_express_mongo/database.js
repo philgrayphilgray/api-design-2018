@@ -3,7 +3,7 @@ mongoose.Promise = global.Promise;
 
 const env = process.env.NODE_ENV || 'development';
 const databaseUrl =
-  process.env.DATABASE_URL || `mongodb://localhost/albumCollector_${env}`;
+  process.env.DATABASE_URL || `mongodb://localhost/album-collector_${env}`;
 const options = {};
 
 module.exports = {
