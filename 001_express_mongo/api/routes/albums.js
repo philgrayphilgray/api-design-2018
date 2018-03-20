@@ -7,6 +7,11 @@ router.get('/', async (req, res, next) => {
   res.json(albums);
 });
 
+router.get('/:id', async (req, res, next) => {
+  const album = await Album.findById({ _id: req.params.id });
+  res.json(album);
+});
+
 router.post('/create', async (req, res, next) => {
   const newAlbum = await new Album(req.body);
   newAlbum.save();
