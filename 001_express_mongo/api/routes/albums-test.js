@@ -49,6 +49,33 @@ describe('Server path: `/`', () => {
   });
 });
 
+describe('Server path: `/:id`', () => {
+  describe('GET', () => {
+    it('should return the title and artist the album', async () => {
+      // seed the database with one album
+      const sampleAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(sampleAlbum);
+
+      // get the one album in the db and destructure its _id property
+
+      const { _id } = Album.findOne({}).exec();
+
+      // get /:id
+      const response = await request(app).get(`/${_id}`);
+
+      // assert that the response contains the title and artist of the sampleAlbum
+
+      assert.include(JSON.stringify(response.body), sampleAlbum.title);
+    });
+  });
+});
+
 describe('Server path: `/create`', () => {
   describe('POST', () => {
     it('should return a `201` status code when creating a new album', async () => {
