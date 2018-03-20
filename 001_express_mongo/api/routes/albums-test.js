@@ -64,7 +64,7 @@ describe('Server path: `/:id`', () => {
 
       // get the one album in the db and destructure its _id property
 
-      const { _id } = Album.findOne({}).exec();
+      const { _id } = await Album.findOne({}).exec();
 
       // get /:id
       const response = await request(app).get(`/${_id}`);
