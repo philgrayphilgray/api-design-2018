@@ -74,6 +74,32 @@ describe('Server path: `/:id`', () => {
       assert.include(JSON.stringify(response.body), sampleAlbum.title);
     });
   });
+
+  describe('DELETE', () => {
+    it('should remove the album from the db', async () => {
+      // Seed the db with one album
+      const sampleAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(sampleAlbum);
+
+      // get the one album in the db and destructure its _id property
+
+      const { _id } = await Album.findOne({}).exec();
+
+      // delete /:id
+      await request(app).delete(`/${_id}`);
+
+      // Find all albums, and assert that the object is empty
+      const response = await Album.find({}).exec();
+
+      assert.isEmpty(response);
+    });
+  });
 });
 
 describe('Server path: `/create`', () => {
