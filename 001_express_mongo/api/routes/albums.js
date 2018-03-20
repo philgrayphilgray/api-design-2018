@@ -21,6 +21,19 @@ router.delete('/:id', async (req, res, next) => {
   res.json({ message: `${req.params.id} was deleted.` });
 });
 
+// Setup a new dynamic route which will capture the album id in `req.params`
+
+router.post('/:id/update', async (req, res, next) => {
+  // Use `findByIdAndUpdate` to get the album with that id and update it, including the `{ new: true }` option
+  const album = await Album.findByIdAndUpdate(
+    { _id: req.params.id },
+    req.body,
+    { new: true }
+  );
+  //   Respond with the updated album
+  res.json(album);
+});
+
 router.post('/create', async (req, res, next) => {
   const newAlbum = await new Album(req.body);
   newAlbum.save();
