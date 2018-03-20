@@ -12,6 +12,15 @@ router.get('/:id', async (req, res, next) => {
   res.json(album);
 });
 
+// Setup a new dynamic route which will capture the album id in `req.params`
+router.delete('/:id', async (req, res, next) => {
+  // Use `findByIdAndRemove` to get the album with that id
+  const album = await Album.findByIdAndRemove({ _id: req.params.id });
+
+  // Respond with a confirmation message that the album with that id was deleted
+  res.json({ message: `${req.params.id} was deleted.` });
+});
+
 router.post('/create', async (req, res, next) => {
   const newAlbum = await new Album(req.body);
   newAlbum.save();
