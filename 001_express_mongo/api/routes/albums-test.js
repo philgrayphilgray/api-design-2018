@@ -102,6 +102,41 @@ describe('Server path: `/:id`', () => {
   });
 });
 
+describe('Server path: `/:id/update`', () => {
+  describe('POST', () => {
+    it('should update the item in the db', async () => {
+      // Seed the db with one album
+      const sampleAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(sampleAlbum);
+
+      // Get the one album in the db and destructure its `_id` property
+      const { _id } = await Album.findOne({}).exec();
+
+      // Create an update object with a new title
+      const update = {
+        title: 'Interstellar Low Ways'
+      };
+
+      // POST an an updated title to `/:id/update` with supertest
+      await request(app)
+        .post(`/${_id}/update`)
+        .send(update);
+
+      // Find the album and assert that its title has changed
+
+      const updatedAlbum = await Album.findById({ _id });
+
+      assert.equal(updatedAlbum.title, update.title);
+    });
+  });
+});
+
 describe('Server path: `/create`', () => {
   describe('POST', () => {
     it('should return a `201` status code when creating a new album', async () => {
