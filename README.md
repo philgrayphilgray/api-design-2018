@@ -1,8 +1,677 @@
-Notes from [REST & GraphQL API Design in Node.js, v2 (using Express & MongoDB)](https://frontendmasters.com/courses/api-node-rest-graphql/)
+## Simple Express/Mongo REST API 001_express_mongo
 
-## Express
+w/ TDD
 
-### Why Express
+### Setup project
+
+#### Install initial dependencies
+
+* Install Express, Nodemon, Morgan, Body-Parser, and Mongoose
+
+```bash
+npm init
+npm install --save express nodemon morgan body-parser mongoose
+```
+
+#### Create server.js
+
+* Require http
+* Define port as process.env.PORT || 3000
+* Assign http.createServer() instance to const server
+* Call listen on the server, passing in the port
+
+```bash
+touch server.js
+```
+
+```js
+const http = require('http');
+const port = process.env.PORT || 3000;
+const server = http.createServer();
+server.listen(port);
+```
+
+#### Create app.js and setup logging
+
+* Require morgan for logging
+* Require body-parser (provides access to req.body object)
+* Assign instance of express to const app
+* Call morgan as middleware on the express app (using .use()), passing in “dev” (?)
+* Call bodyParser.urlencoded() as middleware, passing in options object, {extended: false}
+* Call bodyParser.json() as middleware
+* Pass in a callback to app.use(), set the response to 200 and chain the json() method, passing in an object
+
+```bash
+touch app.js
+```
+
+#### Set response headers to handle CORS
+
+* Create a new app.use() middleware, and inside the callback function call res.header() on each:
+* Set Access-Control-Allow-Origin to \* (all)
+* Set Access-Control-Allow-Headers to ‘Origin, X-Request-With, Content-Type, Accept, Authorization’
+* Check if req.method has options, if so set Access-Control-Allow-Methods to “PUT, POST, PATCH, DELETE, GET”
+* Return res with a 200 status and empty json({})
+* Call next() at the end of the middleware
+* Add error handling
+
+```js
+const express = require('express');
+const morgan = require('morgan');
+const bodyParser = require('body-parser');
+
+const app = express();
+
+app.use(morgan('dev'));
+app.use(bodyParser.urlencoded({ extended: false }));
+
+app.use(bodyParser.json());
+
+app.use((req, res, next) => {
+  res.header('Acess-Control-Allow-Origin', '*');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Request-With, Content-Type, Accept, Authorization'
+  );
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
+    return res.status(200).json({});
+  }
+  next();
+});
+
+app.use((req, res, next) => {
+  res.status(200).json({
+    message: 'hello world'
+  });
+});
+
+app.use((req, res, next) => {
+  const error = new Error('Not found');
+  error.status = 404;
+  next(error);
+});
+
+app.use((error, req, res, next) => {
+  res.status(error.status || 500);
+  res.json({
+    error: {
+      message: error.message
+    }
+  });
+});
+
+module.exports = app;
+```
+
+#### Hookup express app to server
+
+* Require `app` module in `server.js`
+* Pass `app` to `http.createServer()`
+
+```js
+const http = require('http');
+
+const app = require('./app');
+
+const port = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+
+server.listen(port);
+```
+
+#### Start the server
+
+* Add an npm script to `package.json` to start the server using nodemon
+
+```js
+//package.json
+"scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+```
+
+* Start the server
+
+```bash
+npm run start
+```
+
+### Setup MongoDB
+
+* Make sure mongo is installed locally
+* Depending on the location, run the command to start it
+
+```bash
+mongod --dbpath ~/data/db
+```
+
+#### Configure Mongoose
+
+* Create `database.js`
+* Require `mongoose`
+* Set `mongoose.Promise` equal to `global.Promise`
+* Declare the evironment, database URL, and mongoose options
+* Export
+
+```js
+// database.js
+const mongoose = require('mongoose');
+mongoose.Promise = global.Promise;
+
+const env = process.env.NODE_ENV || 'development';
+const databaseUrl =
+  process.env.DATABASE_URL || `mongodb://localhost/albumCollector_${env}`;
+const options = {
+  // useMongoClient option is no longer necesary in mongoose 5.x, please remove it
+};
+
+module.exports = {
+  mongoose,
+  databaseUrl,
+  options
+};
+```
+
+#### Connect MongoDB to Express via Mongoose
+
+* Require mongoose, databaseUrl, and options from `database.js`
+* Connect to mongoose; this should return a promise; move `server.listen(port)` inside the resolve callback
+
+```js
+//server.js
+
+const http = require('http');
+const app = require('./app');
+const { mongoose, databaseUrl, options } = require('./database');
+
+const port = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+
+mongoose.connect(databaseUrl, options).then(() => {
+  server.listen(port);
+});
+```
+
+### Create API, writing server level tests first
+
+* Create a new folder api
+* Create a subfolder api/routes
+
+```bash
+mkdir -p api/routes
+```
+
+#### Configure testing utilities
+
+* Install chai, mocha, supertest
+
+```bash
+npm install --save-dev chai mocha supertest
+```
+
+* Create a bin directory
+* Add `mocha-test`
+
+```sh
+#/bin/sh
+
+set -e
+
+tests_that_are_not_features="$(ls */**/*-test.js | grep -v features)"
+
+NODE_ENV=test ./node_modules/.bin/mocha ${tests_that_are_not_features}
+```
+
+* Make it executable
+
+```bash
+chmod +x bin/mocha-test
+```
+
+* Change `package.json` scrpts:tests
+
+```js
+"test": "bin/mocha-test",
+```
+
+#### Write first test
+
+* Create albums-test.js in `api/routes/`
+* Import mongoose, databaseUrl and options from `database.js`
+* Implement setup and teardown utilities
+
+```js
+const { mongoose, databaseUrl, options } = require('../../database');
+
+// setup and teardown utilities
+beforeEach(async () => {
+  await mongoose.connect(databaseUrl, options);
+  await mongoose.connection.db.dropDatabase();
+});
+```
+
+* Import `assert` from `chai`
+* import `supertest`
+* Write first failing test for create album
+* POST an item and confirm that response code is `201` for Created
+
+```js
+const { assert } = require('chai');
+const request = require('supertest');
+
+const app = require('../../app');
+const { mongoose, databaseUrl, options } = require('../../database');
+
+// setup and teardown utilities
+beforeEach(async () => {
+  await mongoose.connect(databaseUrl, options);
+  await mongoose.connection.db.dropDatabase();
+});
+
+afterEach(async () => {
+  await mongoose.disconnect();
+});
+
+describe('Server path: `/create`', () => {
+  describe('POST', async () => {
+    it('should return a `201` status code when creating a new album', async () => {
+      const newAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      const response = await request(app)
+        .post('/create')
+        .type('json')
+        .send(newAlbum);
+
+      assert.equal(response.status, 201);
+    });
+  });
+});
+```
+
+* Test should fail because the route is not defined and api is responding to every request with a `200` status
+
+#### Create the first route
+
+```js
+const router = require('express').Router();
+
+router.get('/', (req, res, next) => {
+  res.json({
+    message: 'root'
+  });
+});
+
+router.post('/create', (req, res, next) => {
+  res.status(201).json(req.body);
+});
+
+module.exports = router;
+```
+
+### Refactor / write second test
+
+* The first test should now be passing
+* Wite a second test to make sure that the new album is actually being saved to the db
+
+```js
+it('should save the new album to the database', async () => {
+  const newAlbum = {
+    title: 'Space Is the Place',
+    artist: 'Sun Ra'
+  };
+
+  const response = await request(app)
+    .post('/create')
+    .send(newAlbum);
+
+  const createdAlbum = await Album.findOne(newAlbum);
+
+  assert.isOk(createdAlbum);
+});
+```
+
+* It fails, because we still need to create the model.
+
+### Create the Album model
+
+* Create a new `models` directory inside the `api` directory
+* Create `album.js` in the models directory
+
+```bash
+mkdir -p api/models
+touch api/models/album.js
+```
+
+* Inside `album.js`, require mongoose
+* Create a new `mongoose.Schema`, passing in the field names, and giving them each types
+* Create a mongoose.model by passing in a name and the schema
+* Export the model
+
+```js
+const mongoose = require('mongoose');
+
+const albumSchema = new mongoose.Schema({
+  title: {
+    type: String
+  },
+  artist: {
+    type: String
+  }
+});
+
+module.exports = mongoose.model('Album', albumSchema);
+```
+
+* Require the model in both the `albums` route and route test files
+* The tests should now be passing
+
+### Write models test to assert types and required fields
+
+* Create a `album-test.js` in the `api/models/` directory
+* Require `{assert}` from chai
+* Require `mongoose`, `databaseUrl`, and `options` from `database.js`
+* Require the model from `album.js`
+* Setup `beforeEach` and `afterEach` to connect, drop, and disconnect the db, as setup in the route test
+
+```js
+const { assert } = require('chai');
+
+const { mongoose, databaseUrl, options } = require('./../../database');
+const Album = require('./album');
+
+describe('Model: Album', () => {
+  beforeEach(async () => {
+    await mongoose.connect(databaseUrl, options);
+    await mongoose.connection.db.dropDatabase();
+  });
+  afterEach(async () => {
+    await mongoose.disconnect();
+  });
+
+  describe('#title', () => {
+    it('is a String', () => {
+      const title = 1;
+      const album = new Album({ title });
+      assert.strictEqual(album.title, title.toString());
+    });
+
+    it('is required', () => {
+      const title = '';
+      const album = new Album({ title });
+      album.validateSync();
+      assert.equal(album.errors.title.message, 'Title is required.');
+    });
+  });
+});
+```
+
+* Update the model to pass the tests
+
+```js
+const mongoose = require('mongoose');
+
+const albumSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: [true, 'Title is required.']
+  },
+  artist: {
+    type: String
+  }
+});
+
+module.exports = mongoose.model('Album', albumSchema);
+```
+
+### Write the test to GET all albums
+
+* Create a new describe block for `GET /`
+* Seed the database with two albums
+* Attempt to GET `/`
+* Assert that `response.body` includes the titles of the newly created objects
+
+```js
+describe('Server path: `/`', () => {
+  describe('GET', () => {
+    it('should return all albums in the database', async () => {
+      // seed the database
+      const firstAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      const secondAlbum = {
+        title: 'Lanquidity',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(firstAlbum);
+
+      await request(app)
+        .post('/create')
+        .send(secondAlbum);
+
+      // request all
+
+      const response = await request(app).get('/');
+
+      assert.include(JSON.stringify(response.body), firstAlbum.title);
+      assert.include(JSON.stringify(response.body), secondAlbum.title);
+    });
+  });
+});
+```
+
+### Update the GET / route to get all albums
+
+* Use mongoose.find({})
+* Pass the mongoose object into a json response
+
+```js
+router.get('/', async (req, res, next) => {
+  const albums = await Album.find({}).exec();
+  res.json(albums);
+});
+```
+
+### Complete CRUD operations for one album
+
+#### Read one
+
+##### Write test to GET one album
+
+* Seed the db with one album
+* Get the one album in the db and destructure its `_id` property
+* GET `/:id` with supertest
+* Assert that the response contains the title and artist of the `sampleAlbum`
+
+```js
+describe('Server path: `/:id`', () => {
+  describe('GET', () => {
+    it('should return the title and artist the album', async () => {
+      // seed the database with one album
+      const sampleAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(sampleAlbum);
+
+      // get the one album in the db and destructure its _id property
+
+      const { _id } = await Album.findOne({}).exec();
+
+      // get /:id
+      const response = await request(app).get(`/${_id}`);
+
+      // assert that the response contains the title and artist of the sampleAlbum
+
+      assert.include(JSON.stringify(response.body), sampleAlbum.title);
+    });
+  });
+});
+```
+
+##### Write route to GET one album
+
+* Setup a new dynamic route which will capture the album id in `req.params`
+* Use `findById` to get the album with that id
+* Respond with the json for that album
+
+```js
+router.get('/:id', async (req, res, next) => {
+  const album = await Album.findById({ _id: req.params.id });
+  res.json(album);
+});
+```
+
+#### Delete one
+
+##### Write delete one test
+
+* Seed the db with one album
+* Get the one album in the db and destructure its `_id` property
+* DELETE `/:id` with supertest
+* Find all albums, and assert that the object is empty
+
+```js
+  describe('DELETE', () => {
+    it('should remove the album from the db', async () => {
+      // Seed the db with one album
+      const sampleAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(sampleAlbum);
+
+      // get the one album in the db and destructure its _id property
+
+      const { _id } = await Album.findOne({}).exec();
+
+      // delete /:id
+      await request(app).delete(`/${_id}`);
+
+      // Find all albums, and assert that the object is empty
+      const response = await Album.find({}).exec();
+
+      assert.isEmpty(response);
+    });
+  });
+});
+```
+
+##### Create route to delete on album
+
+* Setup a new dynamic route which will capture the album id in `req.params`
+* Use `findByIdAndRemove` to get the album with that id and remove it from the db
+* Respond with a confirmation message that the album with that id was deleted
+
+```js
+// Setup a new dynamic route which will capture the album id in `req.params`
+router.delete('/:id', async (req, res, next) => {
+  // Use `findByIdAndRemove` to get the album with that id
+  const album = await Album.findByIdAndRemove({ _id: req.params.id });
+
+  // Respond with a confirmation message that the album with that id was deleted
+  res.json({ message: `${req.params.id} was deleted.` });
+});
+```
+
+#### Update one
+
+##### Write update one test
+
+* Seed the db with one album
+* Get the one album in the db and destructure its `_id` property
+* Create an update object with a new title
+* POST the update object to `/:id/update` with supertest
+* Find the album and assert that its title has changed
+
+```js
+describe('Server path: `/:id/update`', () => {
+  describe('POST', () => {
+    it('should update the item in the db', async () => {
+      // Seed the db with one album
+      const sampleAlbum = {
+        title: 'Space Is the Place',
+        artist: 'Sun Ra'
+      };
+
+      await request(app)
+        .post('/create')
+        .send(sampleAlbum);
+
+      // Get the one album in the db and destructure its `_id` property
+      const { _id } = await Album.findOne({}).exec();
+
+      // Create an update object with a new title
+      const update = {
+        title: 'Interstellar Low Ways'
+      };
+
+      // POST an an updated title to `/:id/update` with supertest
+      await request(app)
+        .post(`/${_id}/update`)
+        .send(update);
+
+      // Find the album and assert that its title has changed
+
+      const updatedAlbum = await Album.findById({ _id });
+
+      assert.equal(updatedAlbum.title, update.title);
+    });
+  });
+});
+```
+
+##### Create update one route
+
+* Setup a new dynamic route which will capture the album id in `req.params`
+* Use `findByIdAndUpdate` to get the album with that id and update it, including the `{ new: true }` option
+* Respond with the updated album
+
+```js
+router.post('/:id/update', async (req, res, next) => {
+  // Use `findByIdAndUpdate` to get the album with that id and update it, including the `{ new: true }` option
+  const album = await Album.findByIdAndUpdate(
+    { _id: req.params.id },
+    req.body,
+    { new: true }
+  );
+  //   Respond with the updated album
+  res.json(album);
+});
+```
+
+### Associate albums with user collections
+
+## Configurable Webpack Express/Mongo REST API
+
+w/ TDD
+
+## Configurable Webpack Express/Mongo REST/GraphQL API
+
+w/ TDD
+
+## Notes from [REST & GraphQL API Design in Node.js, v2 (using Express & MongoDB)](https://frontendmasters.com/courses/api-node-rest-graphql/)
+
+### Express
+
+#### Why Express
 
 * Go-to for creating API's with node
 * Tons of plugins and integrations
@@ -12,7 +681,7 @@ Notes from [REST & GraphQL API Design in Node.js, v2 (using Express & MongoDB)](
 * DB agnostic
 * Highly configurable
 
-### Simple Example
+#### Simple Example
 
 * Declare an app from express
 * Setup basic routing for index route
@@ -34,7 +703,7 @@ app.listen(3000, () => {
 
 NOTE: You can use Webpack hot-module reloading to patch changes on the fly instead of restarting the server (nodemon)
 
-### Routing
+#### Routing
 
 * Flexible pattern matching
 * Handles parameters
@@ -61,14 +730,14 @@ user
   .post(userController.createOne);
 ```
 
-### Controllers
+#### Controllers
 
 * Reuse controllers
 * Should be async
 * Composable
 * Can respond with anything
 
-### Middleware
+#### Middleware
 
 * Functions that can be configured to run before the response is sent back
 * The back function is called `next`
@@ -93,24 +762,24 @@ app.use(
 * `bodyParser.json`: anything that is posted or put to the api gets treated like JSON, parsed, and given to us in `req.body`
 * JSON web tokens: unique string that's signed on your server, when decoded, turns back into the object that was signed; `expressJwt`
 
-#### Error handling
+##### Error handling
 
 * The `error` object is the first parameter, as in `(err, req, res, next)=>{}`
 * The error handler needs to be at the end; errors bubble up
 
-## CRUD
+### CRUD
 
-### MongoDB
+#### MongoDB
 
 * No-SQL
 * Schemaless
 
-#### Mongoose
+##### Mongoose
 
 * The most popular ORM/ODM for Mongo, does provide schemas
 * The Mongoose query api is promise-based, has validations, lifecycle hooks, run time join tables (populations)
 
-#### Models
+##### Models
 
 * Import `mongoose`
 * Make an object called `schema`
@@ -135,9 +804,9 @@ app.use(
 * The `{new: true}` option is important; it means return the new updated document from this query, and not the old one before the update
 * Once you have a document like `song` from `const song = await Song.findById(id).exec()`, you can update it with dot notation as in `song.name="new name"` and then `await song.save()` will write to a document
 
-### Dynamic config and testing
+#### Dynamic config and testing
 
-#### Dynamic config
+##### Dynamic config
 
 * Create configs based on environment
 * Keep all config in one place
@@ -154,11 +823,11 @@ app.use(
 * The platfrom where you deploy should always have a place for env variables
 * Use `dotenv` package to store secrets in an `env` file and load them during testing
 
-#### Dynamic testing
+##### Dynamic testing
 
 * For repeatable tests like `GET` all or `UPDATE` one, you can generate them dynamically by wrapping them in a function and using variables; then call the function with the model and any options like `createApiSpec(model, resourceName, newResource)`
 
-## GraphQL
+### GraphQL
 
 * Gives clients the power to ask for exactly what they need and nothing more (declarative?)
 * Can use together with REST API, side by side, underneath, ontop
@@ -168,7 +837,7 @@ app.use(
 * GraphQL uses one route, not based on HTTP verbs, strict data typing, interactive docs, works well with component architecture, advanced data resolving
 * One disadvantage: Rest is cacheable on a network level; GraphQL is not
 
-### Schemas
+#### Schemas
 
 * For interacting with the api, not the database; it's before the database
 * Defines Types, Queries, and Mutations
@@ -206,7 +875,7 @@ type Playlist{
 * There are some plugins that will read your Mongoose schema and generate schemas
 * You can also use a function to dynamically generate schemas, but you also need to generate the resolvers
 
-### Queries and Mutations
+#### Queries and Mutations
 
 * If it's not a scalar, we have to specify what fields we want from that object
 * Prepend mutations with the mutation keyword; mutations are named; the convention is to use titlecase; describe the arguments:
@@ -225,7 +894,7 @@ mutation CreateSong($input: NewSong!){
   }
 ```
 
-### GraphQL and Express
+#### GraphQL and Express
 
 * We can reuse express libraries; express does a good job at packaging the request object
 
@@ -300,7 +969,7 @@ app.use(
 
 * When you return an object from the resolvers, and properties match up with the types in your graphql, graphql takes it from there; if they don't match up, you need to write a resolver for that
 
-### Resolvers
+#### Resolvers
 
 * Functions to resolve data for schema
 * A resolver takes 4 arguments: the `rootValue` (optional - for nested resolvers, or per request caching), then an object of all the arguments for the given resolver, then the `context` object (the request that was coming in), and finally the `info`, which is the raw ast (for advanced use). Args and context are the most commonly used arguments.
@@ -349,7 +1018,7 @@ export const userResolvers = {
 * Import resolvers into graphQLRouter
 * Include them in the `merge` function inside of resolvers inside `makeExecutableSchema()`
 
-### Mutations
+#### Mutations
 
 * Use whenever you need to make a change to a data source
 * POST / PUT / DELETE requests
@@ -375,7 +1044,7 @@ mutation CreateSong($input: NewSong!){
 * Define `type Mutation` in one place, and `extend` it in other files
 * The mutations resolvers have the same syntax; you're just performing some Create, Update, Delete operation instead of a Read operation
 
-### Nested Resolvers
+#### Nested Resolvers
 
 Non scalars:
 
@@ -415,7 +1084,7 @@ export const playlistResolvers = {
 };
 ```
 
-### Protecting Resolvers and Testing
+#### Protecting Resolvers and Testing
 
 * Move the functionality from global middleware to a per-resolver basis
 * Authenticate on every resolver
@@ -466,7 +1135,7 @@ describe('User', () => {
 });
 ```
 
-### Rest and GraphQL
+#### Rest and GraphQL
 
 * REST next to GraphQL
 * Convert REST to GraphQL: take incoming REST request and create a query on the fly; run query against graphql schema
