@@ -4,3 +4,11 @@ type Post {
   title: String!
   text: String!
 }
+
+type User {
+  id: ID! @unique
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  age: Int
+}
