@@ -659,6 +659,23 @@ router.post('/:id/update', async (req, res, next) => {
 
 ### Associate albums with user collections
 
+## graphql-simple with Prisma
+
+* Install prisma
+
+```bash
+npm install -g prisma
+```
+
+* Bootstrap GraphQL server
+
+```bash
+prisma init 002_graphql-simple
+> GraphQL server/full stack boilerplate (recommended)
+> node-basic
+> local
+```
+
 ## Configurable Webpack Express/Mongo REST API
 
 w/ TDD
