@@ -881,7 +881,7 @@ mutation{
 }
 ```
 
-### Relate the User model to posts
+### Relate the Post model to the User model
 
 Source: [Changing the data model and updating the API](https://www.prisma.io/docs/tutorials/prisma-basics/changing-the-data-model-va4ga2phie)
 
@@ -908,6 +908,179 @@ type User {
 
 ```bash
 prisma deploy
+```
+
+```js
+* Add a new user
+
+// request
+
+mutation {
+  createUser(data: {
+    name: "John"
+    age: 42
+  }) {
+    id
+    createdAt
+    updatedAt
+  }
+}
+
+//  response
+
+{
+  "data": {
+    "createUser": {
+      "id": "cjfn22toe002m0783jex5ezjo",
+      "createdAt": "2018-04-05T21:51:05.000Z",
+      "updatedAt": "2018-04-05T21:51:05.000Z"
+    }
+  }
+}
+```
+
+* Edit the Post model to include an author field of type `User!`
+* Edit the User model to include a posts field of type `[Post!]!`
+
+```js
+type Post {
+  id: ID! @unique
+  isPublished: Boolean! @default(value: false)
+  title: String!
+  text: String!
+  author: User!
+}
+
+type User {
+  id: ID! @unique
+  name: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  age: Int
+  posts: [Post!]!
+}
+```
+
+* Redeploy
+
+```bash
+prisma deploy
+```
+
+* We can now create a post with an author
+
+```js
+// request
+
+mutation {
+  createPost(
+   data: {
+      title: "Post with an author",
+      text: "Post text",
+      author:{
+        connect:{
+          id:"cjfn0wup500220783ybt6frab"
+        }
+      }
+    }
+  ) {
+    id
+  }
+}
+
+// response
+
+{
+  "data": {
+    "createPost": {
+      "id": "cjfn2xywd003207839o7cymc8"
+    }
+  }
+}
+```
+
+* Get all posts with an author
+
+```js
+// request
+{
+  posts(where: {author: {}}) {
+    title
+    isPublished
+    text
+    id
+    author {
+      id
+    }
+  }
+}
+
+// response
+
+{
+  posts(where: {author: {}}) {
+    title
+    isPublished
+    text
+    id
+    author {
+      id
+    }
+  }
+}
+```
+
+* Create another post for the same author
+
+```js
+// request
+
+mutation {
+  createPost(
+   data: {
+      title: "Second post with the same author",
+      text: "Post text",
+      author:{
+        connect:{
+          id:"cjfn0wup500220783ybt6frab"
+        }
+      }
+    }
+  ) {
+    title
+    id
+    text
+    author{
+      name
+      posts{
+        title
+      }
+    }
+  }
+}
+
+// response
+
+{
+  "data": {
+    "createPost": {
+      "title": "Second post with the same author",
+      "id": "cjfn3gxvk003c07831jerqdp7",
+      "text": "Post text",
+      "author": {
+        "name": "Cheongah",
+        "posts": [
+          {
+            "title": "Post with an author"
+          },
+          {
+            "title": "Second post with the same author"
+          }
+        ]
+      }
+    }
+  }
+}
 ```
 
 ## Configurable Webpack Express/Mongo REST API
