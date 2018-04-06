@@ -1,10 +1,6 @@
-# import Post from "./generated/prisma.graphql"
 # import Album from "./generated/prisma.graphql"
 
 type Query {
-  feed: [Post!]!
-  drafts: [Post!]!
-  post(id: ID!): Post
   user(id: ID!): User
   users: [User!]!
   artist(id: ID!): Artist
@@ -14,9 +10,6 @@ type Query {
 }
 
 type Mutation {
-  createDraft(title: String!, text: String): Post
-  deletePost(id: ID!): Post
-  publish(id: ID!): Post
   createArtist(name: String!): Artist
   createUser(username: String!): User
   createAlbum(
