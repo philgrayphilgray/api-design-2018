@@ -390,6 +390,66 @@ type User {
 }
 ```
 
+* In implementing this, we create an additional if/else check in the createAlbum mutation resolver
+
+```js
+// inside index.js resolvers.Mutation object
+
+async createAlbum(parent, { artist, owner, ...args }, ctx, info) {
+      const artistExists = await ctx.db.exists.Artist({
+        name: artist
+      });
+
+      if (!artistExists) {
+        return ctx.db.mutation.createAlbum(
+          {
+            data: {
+              ...args,
+              artist: { create: { name: artist } },
+              owner: { connect: { id: owner } },
+              master: { create: { title: args.title } }
+            }
+          },
+          info
+        );
+      } else {
+        const masterExists = await ctx.db.exists.Master({
+          title: args.title
+        });
+
+        if (!masterExists) {
+          return ctx.db.mutation.createAlbum(
+            {
+              data: {
+                ...args,
+                artist: { connect: { name: artist } },
+                owner: { connect: { id: owner } },
+                master: {
+                  create: { artist: { connect: { name: artist } }, ...args }
+                }
+              }
+            },
+            info
+          );
+        } else {
+          return ctx.db.mutation.createAlbum(
+            {
+              data: {
+                ...args,
+                artist: { connect: { name: artist } },
+                owner: { connect: { id: owner } },
+                master: { connect: { title: args.title } }
+              }
+            },
+            info
+          );
+        }
+      }
+    }
+```
+
+* The first user to create an album sets the defaults for the master. We can later add access for any user to update to any field of the master, similar to how users on Wikipedia can update content that is outdated or inaccurate.
+
 ### Remove boilerplate models, schema, and resolvers
 
 * Remove boilerplate resolvers from `index.js`
@@ -397,6 +457,8 @@ type User {
 * Restart the dev server; verify there are no errors
 * Remove boilerplate models from `datamodel.graphql`
 * Redeploy; restart the dev server; verify there are no errors
+
+### Lock down user collections with permissions
 
 ## GraphQL with Authentication API with Prisma 004_graphql-auth
 

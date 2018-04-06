@@ -13,12 +13,23 @@ type Album implements Node {
   year: String!
   rating: Int!
   owner(where: UserWhereInput): User!
+  master(where: MasterWhereInput): Master
 }
 
 type Artist implements Node {
   id: ID!
   name: String!
-  works(where: AlbumWhereInput, orderBy: AlbumOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Album!]
+  works(where: MasterWhereInput, orderBy: MasterOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Master!]
+}
+
+type Master implements Node {
+  id: ID!
+  title: String!
+  artist(where: ArtistWhereInput): Artist!
+  art: String!
+  year: String!
+  rating: Int!
+  copies(where: AlbumWhereInput, orderBy: AlbumOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Album!]
 }
 
 type User implements Node {
@@ -37,6 +48,10 @@ type AggregateAlbum {
 }
 
 type AggregateArtist {
+  count: Int!
+}
+
+type AggregateMaster {
   count: Int!
 }
 
@@ -64,12 +79,13 @@ input AlbumCreateInput {
   art: String!
   year: String!
   rating: Int!
-  artist: ArtistCreateOneWithoutWorksInput!
+  artist: ArtistCreateOneInput!
   owner: UserCreateOneWithoutCollectionInput!
+  master: MasterCreateOneWithoutCopiesInput
 }
 
-input AlbumCreateManyWithoutArtistInput {
-  create: [AlbumCreateWithoutArtistInput!]
+input AlbumCreateManyWithoutMasterInput {
+  create: [AlbumCreateWithoutMasterInput!]
   connect: [AlbumWhereUniqueInput!]
 }
 
@@ -78,11 +94,12 @@ input AlbumCreateManyWithoutOwnerInput {
   connect: [AlbumWhereUniqueInput!]
 }
 
-input AlbumCreateWithoutArtistInput {
+input AlbumCreateWithoutMasterInput {
   title: String!
   art: String!
   year: String!
   rating: Int!
+  artist: ArtistCreateOneInput!
   owner: UserCreateOneWithoutCollectionInput!
 }
 
@@ -91,7 +108,8 @@ input AlbumCreateWithoutOwnerInput {
   art: String!
   year: String!
   rating: Int!
-  artist: ArtistCreateOneWithoutWorksInput!
+  artist: ArtistCreateOneInput!
+  master: MasterCreateOneWithoutCopiesInput
 }
 
 """
@@ -173,17 +191,18 @@ input AlbumUpdateInput {
   art: String
   year: String
   rating: Int
-  artist: ArtistUpdateOneWithoutWorksInput
+  artist: ArtistUpdateOneInput
   owner: UserUpdateOneWithoutCollectionInput
+  master: MasterUpdateOneWithoutCopiesInput
 }
 
-input AlbumUpdateManyWithoutArtistInput {
-  create: [AlbumCreateWithoutArtistInput!]
+input AlbumUpdateManyWithoutMasterInput {
+  create: [AlbumCreateWithoutMasterInput!]
   connect: [AlbumWhereUniqueInput!]
   disconnect: [AlbumWhereUniqueInput!]
   delete: [AlbumWhereUniqueInput!]
-  update: [AlbumUpdateWithWhereUniqueWithoutArtistInput!]
-  upsert: [AlbumUpsertWithWhereUniqueWithoutArtistInput!]
+  update: [AlbumUpdateWithWhereUniqueWithoutMasterInput!]
+  upsert: [AlbumUpsertWithWhereUniqueWithoutMasterInput!]
 }
 
 input AlbumUpdateManyWithoutOwnerInput {
@@ -195,11 +214,12 @@ input AlbumUpdateManyWithoutOwnerInput {
   upsert: [AlbumUpsertWithWhereUniqueWithoutOwnerInput!]
 }
 
-input AlbumUpdateWithoutArtistDataInput {
+input AlbumUpdateWithoutMasterDataInput {
   title: String
   art: String
   year: String
   rating: Int
+  artist: ArtistUpdateOneInput
   owner: UserUpdateOneWithoutCollectionInput
 }
 
@@ -208,12 +228,13 @@ input AlbumUpdateWithoutOwnerDataInput {
   art: String
   year: String
   rating: Int
-  artist: ArtistUpdateOneWithoutWorksInput
+  artist: ArtistUpdateOneInput
+  master: MasterUpdateOneWithoutCopiesInput
 }
 
-input AlbumUpdateWithWhereUniqueWithoutArtistInput {
+input AlbumUpdateWithWhereUniqueWithoutMasterInput {
   where: AlbumWhereUniqueInput!
-  data: AlbumUpdateWithoutArtistDataInput!
+  data: AlbumUpdateWithoutMasterDataInput!
 }
 
 input AlbumUpdateWithWhereUniqueWithoutOwnerInput {
@@ -221,10 +242,10 @@ input AlbumUpdateWithWhereUniqueWithoutOwnerInput {
   data: AlbumUpdateWithoutOwnerDataInput!
 }
 
-input AlbumUpsertWithWhereUniqueWithoutArtistInput {
+input AlbumUpsertWithWhereUniqueWithoutMasterInput {
   where: AlbumWhereUniqueInput!
-  update: AlbumUpdateWithoutArtistDataInput!
-  create: AlbumCreateWithoutArtistInput!
+  update: AlbumUpdateWithoutMasterDataInput!
+  create: AlbumCreateWithoutMasterInput!
 }
 
 input AlbumUpsertWithWhereUniqueWithoutOwnerInput {
@@ -485,6 +506,7 @@ input AlbumWhereInput {
   rating_gte: Int
   artist: ArtistWhereInput
   owner: UserWhereInput
+  master: MasterWhereInput
 }
 
 input AlbumWhereUniqueInput {
@@ -508,7 +530,12 @@ type ArtistConnection {
 
 input ArtistCreateInput {
   name: String!
-  works: AlbumCreateManyWithoutArtistInput
+  works: MasterCreateManyWithoutArtistInput
+}
+
+input ArtistCreateOneInput {
+  create: ArtistCreateInput
+  connect: ArtistWhereUniqueInput
 }
 
 input ArtistCreateOneWithoutWorksInput {
@@ -585,9 +612,22 @@ input ArtistSubscriptionWhereInput {
   node: ArtistWhereInput
 }
 
+input ArtistUpdateDataInput {
+  name: String
+  works: MasterUpdateManyWithoutArtistInput
+}
+
 input ArtistUpdateInput {
   name: String
-  works: AlbumUpdateManyWithoutArtistInput
+  works: MasterUpdateManyWithoutArtistInput
+}
+
+input ArtistUpdateOneInput {
+  create: ArtistCreateInput
+  connect: ArtistWhereUniqueInput
+  delete: Boolean
+  update: ArtistUpdateDataInput
+  upsert: ArtistUpsertNestedInput
 }
 
 input ArtistUpdateOneWithoutWorksInput {
@@ -600,6 +640,11 @@ input ArtistUpdateOneWithoutWorksInput {
 
 input ArtistUpdateWithoutWorksDataInput {
   name: String
+}
+
+input ArtistUpsertNestedInput {
+  update: ArtistUpdateDataInput!
+  create: ArtistCreateInput!
 }
 
 input ArtistUpsertWithoutWorksInput {
@@ -722,9 +767,9 @@ input ArtistWhereInput {
   All values not ending with the given string.
   """
   name_not_ends_with: String
-  works_every: AlbumWhereInput
-  works_some: AlbumWhereInput
-  works_none: AlbumWhereInput
+  works_every: MasterWhereInput
+  works_some: MasterWhereInput
+  works_none: MasterWhereInput
 }
 
 input ArtistWhereUniqueInput {
@@ -745,23 +790,473 @@ Long can represent values between -(2^63) and 2^63 - 1.
 """
 scalar Long
 
+"""
+A connection to a list of items.
+"""
+type MasterConnection {
+  """
+  Information to aid in pagination.
+  """
+  pageInfo: PageInfo!
+  """
+  A list of edges.
+  """
+  edges: [MasterEdge]!
+  aggregate: AggregateMaster!
+}
+
+input MasterCreateInput {
+  title: String!
+  art: String!
+  year: String!
+  rating: Int!
+  artist: ArtistCreateOneWithoutWorksInput!
+  copies: AlbumCreateManyWithoutMasterInput
+}
+
+input MasterCreateManyWithoutArtistInput {
+  create: [MasterCreateWithoutArtistInput!]
+  connect: [MasterWhereUniqueInput!]
+}
+
+input MasterCreateOneWithoutCopiesInput {
+  create: MasterCreateWithoutCopiesInput
+  connect: MasterWhereUniqueInput
+}
+
+input MasterCreateWithoutArtistInput {
+  title: String!
+  art: String!
+  year: String!
+  rating: Int!
+  copies: AlbumCreateManyWithoutMasterInput
+}
+
+input MasterCreateWithoutCopiesInput {
+  title: String!
+  art: String!
+  year: String!
+  rating: Int!
+  artist: ArtistCreateOneWithoutWorksInput!
+}
+
+"""
+An edge in a connection.
+"""
+type MasterEdge {
+  """
+  The item at the end of the edge.
+  """
+  node: Master!
+  """
+  A cursor for use in pagination.
+  """
+  cursor: String!
+}
+
+enum MasterOrderByInput {
+  id_ASC
+  id_DESC
+  title_ASC
+  title_DESC
+  art_ASC
+  art_DESC
+  year_ASC
+  year_DESC
+  rating_ASC
+  rating_DESC
+  updatedAt_ASC
+  updatedAt_DESC
+  createdAt_ASC
+  createdAt_DESC
+}
+
+type MasterPreviousValues {
+  id: ID!
+  title: String!
+  art: String!
+  year: String!
+  rating: Int!
+}
+
+type MasterSubscriptionPayload {
+  mutation: MutationType!
+  node: Master
+  updatedFields: [String!]
+  previousValues: MasterPreviousValues
+}
+
+input MasterSubscriptionWhereInput {
+  """
+  Logical AND on all given filters.
+  """
+  AND: [MasterSubscriptionWhereInput!]
+  """
+  Logical OR on all given filters.
+  """
+  OR: [MasterSubscriptionWhereInput!]
+  """
+  The subscription event gets dispatched when it's listed in mutation_in
+  """
+  mutation_in: [MutationType!]
+  """
+  The subscription event gets only dispatched when one of the updated fields names is included in this list
+  """
+  updatedFields_contains: String
+  """
+  The subscription event gets only dispatched when all of the field names included in this list have been updated
+  """
+  updatedFields_contains_every: [String!]
+  """
+  The subscription event gets only dispatched when some of the field names included in this list have been updated
+  """
+  updatedFields_contains_some: [String!]
+  node: MasterWhereInput
+}
+
+input MasterUpdateInput {
+  title: String
+  art: String
+  year: String
+  rating: Int
+  artist: ArtistUpdateOneWithoutWorksInput
+  copies: AlbumUpdateManyWithoutMasterInput
+}
+
+input MasterUpdateManyWithoutArtistInput {
+  create: [MasterCreateWithoutArtistInput!]
+  connect: [MasterWhereUniqueInput!]
+  disconnect: [MasterWhereUniqueInput!]
+  delete: [MasterWhereUniqueInput!]
+  update: [MasterUpdateWithWhereUniqueWithoutArtistInput!]
+  upsert: [MasterUpsertWithWhereUniqueWithoutArtistInput!]
+}
+
+input MasterUpdateOneWithoutCopiesInput {
+  create: MasterCreateWithoutCopiesInput
+  connect: MasterWhereUniqueInput
+  disconnect: Boolean
+  delete: Boolean
+  update: MasterUpdateWithoutCopiesDataInput
+  upsert: MasterUpsertWithoutCopiesInput
+}
+
+input MasterUpdateWithoutArtistDataInput {
+  title: String
+  art: String
+  year: String
+  rating: Int
+  copies: AlbumUpdateManyWithoutMasterInput
+}
+
+input MasterUpdateWithoutCopiesDataInput {
+  title: String
+  art: String
+  year: String
+  rating: Int
+  artist: ArtistUpdateOneWithoutWorksInput
+}
+
+input MasterUpdateWithWhereUniqueWithoutArtistInput {
+  where: MasterWhereUniqueInput!
+  data: MasterUpdateWithoutArtistDataInput!
+}
+
+input MasterUpsertWithoutCopiesInput {
+  update: MasterUpdateWithoutCopiesDataInput!
+  create: MasterCreateWithoutCopiesInput!
+}
+
+input MasterUpsertWithWhereUniqueWithoutArtistInput {
+  where: MasterWhereUniqueInput!
+  update: MasterUpdateWithoutArtistDataInput!
+  create: MasterCreateWithoutArtistInput!
+}
+
+input MasterWhereInput {
+  """
+  Logical AND on all given filters.
+  """
+  AND: [MasterWhereInput!]
+  """
+  Logical OR on all given filters.
+  """
+  OR: [MasterWhereInput!]
+  id: ID
+  """
+  All values that are not equal to given value.
+  """
+  id_not: ID
+  """
+  All values that are contained in given list.
+  """
+  id_in: [ID!]
+  """
+  All values that are not contained in given list.
+  """
+  id_not_in: [ID!]
+  """
+  All values less than the given value.
+  """
+  id_lt: ID
+  """
+  All values less than or equal the given value.
+  """
+  id_lte: ID
+  """
+  All values greater than the given value.
+  """
+  id_gt: ID
+  """
+  All values greater than or equal the given value.
+  """
+  id_gte: ID
+  """
+  All values containing the given string.
+  """
+  id_contains: ID
+  """
+  All values not containing the given string.
+  """
+  id_not_contains: ID
+  """
+  All values starting with the given string.
+  """
+  id_starts_with: ID
+  """
+  All values not starting with the given string.
+  """
+  id_not_starts_with: ID
+  """
+  All values ending with the given string.
+  """
+  id_ends_with: ID
+  """
+  All values not ending with the given string.
+  """
+  id_not_ends_with: ID
+  title: String
+  """
+  All values that are not equal to given value.
+  """
+  title_not: String
+  """
+  All values that are contained in given list.
+  """
+  title_in: [String!]
+  """
+  All values that are not contained in given list.
+  """
+  title_not_in: [String!]
+  """
+  All values less than the given value.
+  """
+  title_lt: String
+  """
+  All values less than or equal the given value.
+  """
+  title_lte: String
+  """
+  All values greater than the given value.
+  """
+  title_gt: String
+  """
+  All values greater than or equal the given value.
+  """
+  title_gte: String
+  """
+  All values containing the given string.
+  """
+  title_contains: String
+  """
+  All values not containing the given string.
+  """
+  title_not_contains: String
+  """
+  All values starting with the given string.
+  """
+  title_starts_with: String
+  """
+  All values not starting with the given string.
+  """
+  title_not_starts_with: String
+  """
+  All values ending with the given string.
+  """
+  title_ends_with: String
+  """
+  All values not ending with the given string.
+  """
+  title_not_ends_with: String
+  art: String
+  """
+  All values that are not equal to given value.
+  """
+  art_not: String
+  """
+  All values that are contained in given list.
+  """
+  art_in: [String!]
+  """
+  All values that are not contained in given list.
+  """
+  art_not_in: [String!]
+  """
+  All values less than the given value.
+  """
+  art_lt: String
+  """
+  All values less than or equal the given value.
+  """
+  art_lte: String
+  """
+  All values greater than the given value.
+  """
+  art_gt: String
+  """
+  All values greater than or equal the given value.
+  """
+  art_gte: String
+  """
+  All values containing the given string.
+  """
+  art_contains: String
+  """
+  All values not containing the given string.
+  """
+  art_not_contains: String
+  """
+  All values starting with the given string.
+  """
+  art_starts_with: String
+  """
+  All values not starting with the given string.
+  """
+  art_not_starts_with: String
+  """
+  All values ending with the given string.
+  """
+  art_ends_with: String
+  """
+  All values not ending with the given string.
+  """
+  art_not_ends_with: String
+  year: String
+  """
+  All values that are not equal to given value.
+  """
+  year_not: String
+  """
+  All values that are contained in given list.
+  """
+  year_in: [String!]
+  """
+  All values that are not contained in given list.
+  """
+  year_not_in: [String!]
+  """
+  All values less than the given value.
+  """
+  year_lt: String
+  """
+  All values less than or equal the given value.
+  """
+  year_lte: String
+  """
+  All values greater than the given value.
+  """
+  year_gt: String
+  """
+  All values greater than or equal the given value.
+  """
+  year_gte: String
+  """
+  All values containing the given string.
+  """
+  year_contains: String
+  """
+  All values not containing the given string.
+  """
+  year_not_contains: String
+  """
+  All values starting with the given string.
+  """
+  year_starts_with: String
+  """
+  All values not starting with the given string.
+  """
+  year_not_starts_with: String
+  """
+  All values ending with the given string.
+  """
+  year_ends_with: String
+  """
+  All values not ending with the given string.
+  """
+  year_not_ends_with: String
+  rating: Int
+  """
+  All values that are not equal to given value.
+  """
+  rating_not: Int
+  """
+  All values that are contained in given list.
+  """
+  rating_in: [Int!]
+  """
+  All values that are not contained in given list.
+  """
+  rating_not_in: [Int!]
+  """
+  All values less than the given value.
+  """
+  rating_lt: Int
+  """
+  All values less than or equal the given value.
+  """
+  rating_lte: Int
+  """
+  All values greater than the given value.
+  """
+  rating_gt: Int
+  """
+  All values greater than or equal the given value.
+  """
+  rating_gte: Int
+  artist: ArtistWhereInput
+  copies_every: AlbumWhereInput
+  copies_some: AlbumWhereInput
+  copies_none: AlbumWhereInput
+}
+
+input MasterWhereUniqueInput {
+  id: ID
+  title: String
+}
+
 type Mutation {
   createAlbum(data: AlbumCreateInput!): Album!
+  createMaster(data: MasterCreateInput!): Master!
   createArtist(data: ArtistCreateInput!): Artist!
   createUser(data: UserCreateInput!): User!
   updateAlbum(data: AlbumUpdateInput!, where: AlbumWhereUniqueInput!): Album
+  updateMaster(data: MasterUpdateInput!, where: MasterWhereUniqueInput!): Master
   updateArtist(data: ArtistUpdateInput!, where: ArtistWhereUniqueInput!): Artist
   updateUser(data: UserUpdateInput!, where: UserWhereUniqueInput!): User
   deleteAlbum(where: AlbumWhereUniqueInput!): Album
+  deleteMaster(where: MasterWhereUniqueInput!): Master
   deleteArtist(where: ArtistWhereUniqueInput!): Artist
   deleteUser(where: UserWhereUniqueInput!): User
   upsertAlbum(where: AlbumWhereUniqueInput!, create: AlbumCreateInput!, update: AlbumUpdateInput!): Album!
+  upsertMaster(where: MasterWhereUniqueInput!, create: MasterCreateInput!, update: MasterUpdateInput!): Master!
   upsertArtist(where: ArtistWhereUniqueInput!, create: ArtistCreateInput!, update: ArtistUpdateInput!): Artist!
   upsertUser(where: UserWhereUniqueInput!, create: UserCreateInput!, update: UserUpdateInput!): User!
   updateManyAlbums(data: AlbumUpdateInput!, where: AlbumWhereInput!): BatchPayload!
+  updateManyMasters(data: MasterUpdateInput!, where: MasterWhereInput!): BatchPayload!
   updateManyArtists(data: ArtistUpdateInput!, where: ArtistWhereInput!): BatchPayload!
   updateManyUsers(data: UserUpdateInput!, where: UserWhereInput!): BatchPayload!
   deleteManyAlbums(where: AlbumWhereInput!): BatchPayload!
+  deleteManyMasters(where: MasterWhereInput!): BatchPayload!
   deleteManyArtists(where: ArtistWhereInput!): BatchPayload!
   deleteManyUsers(where: UserWhereInput!): BatchPayload!
 }
@@ -806,12 +1301,15 @@ type PageInfo {
 
 type Query {
   albums(where: AlbumWhereInput, orderBy: AlbumOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Album]!
+  masters(where: MasterWhereInput, orderBy: MasterOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Master]!
   artists(where: ArtistWhereInput, orderBy: ArtistOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Artist]!
   users(where: UserWhereInput, orderBy: UserOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [User]!
   album(where: AlbumWhereUniqueInput!): Album
+  master(where: MasterWhereUniqueInput!): Master
   artist(where: ArtistWhereUniqueInput!): Artist
   user(where: UserWhereUniqueInput!): User
   albumsConnection(where: AlbumWhereInput, orderBy: AlbumOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): AlbumConnection!
+  mastersConnection(where: MasterWhereInput, orderBy: MasterOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): MasterConnection!
   artistsConnection(where: ArtistWhereInput, orderBy: ArtistOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): ArtistConnection!
   usersConnection(where: UserWhereInput, orderBy: UserOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): UserConnection!
   """
@@ -825,6 +1323,7 @@ type Query {
 
 type Subscription {
   album(where: AlbumSubscriptionWhereInput): AlbumSubscriptionPayload
+  master(where: MasterSubscriptionWhereInput): MasterSubscriptionPayload
   artist(where: ArtistSubscriptionWhereInput): ArtistSubscriptionPayload
   user(where: UserSubscriptionWhereInput): UserSubscriptionPayload
 }

@@ -6,12 +6,23 @@ type Album {
   year: String!
   rating: Int!
   owner: User!
+  master: Master
+}
+
+type Master {
+  id: ID! @unique
+  title: String! @unique
+  artist: Artist!
+  art: String!
+  year: String!
+  rating: Int!
+  copies: [Album!]!
 }
 
 type Artist {
   id: ID! @unique
   name: String! @unique
-  works: [Album!]!
+  works: [Master!]!
 }
 
 type User {

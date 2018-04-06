@@ -9,6 +9,8 @@ type Query {
   artists: [Artist!]!
   album(id: ID!): Album
   albums: [Album!]!
+  master(title: String!): Master
+  masters: [Master!]!
 }
 
 type Mutation {

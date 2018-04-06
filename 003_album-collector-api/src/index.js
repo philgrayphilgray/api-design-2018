@@ -20,6 +20,12 @@ const resolvers = {
     },
     albums(parent, args, ctx, info) {
       return ctx.db.query.albums({}, info);
+    },
+    master(parent, { title, artist }, ctx, info) {
+      return ctx.db.query.master({ where: { id, title }, info });
+    },
+    masters(parent, args, ctx, info) {
+      return ctx.db.query.masters({}, info);
     }
   },
   Mutation: {
@@ -41,28 +47,51 @@ const resolvers = {
       const artistExists = await ctx.db.exists.Artist({
         name: artist
       });
+
       if (!artistExists) {
         return ctx.db.mutation.createAlbum(
           {
             data: {
               ...args,
               artist: { create: { name: artist } },
-              owner: { connect: { id: owner } }
+              owner: { connect: { id: owner } },
+              master: { create: { title: args.title } }
             }
           },
           info
         );
       } else {
-        return ctx.db.mutation.createAlbum(
-          {
-            data: {
-              ...args,
-              artist: { connect: { name: artist } },
-              owner: { connect: { id: owner } }
-            }
-          },
-          info
-        );
+        const masterExists = await ctx.db.exists.Master({
+          title: args.title
+        });
+
+        if (!masterExists) {
+          return ctx.db.mutation.createAlbum(
+            {
+              data: {
+                ...args,
+                artist: { connect: { name: artist } },
+                owner: { connect: { id: owner } },
+                master: {
+                  create: { artist: { connect: { name: artist } }, ...args }
+                }
+              }
+            },
+            info
+          );
+        } else {
+          return ctx.db.mutation.createAlbum(
+            {
+              data: {
+                ...args,
+                artist: { connect: { name: artist } },
+                owner: { connect: { id: owner } },
+                master: { connect: { title: args.title } }
+              }
+            },
+            info
+          );
+        }
       }
     }
   }
