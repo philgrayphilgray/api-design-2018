@@ -311,7 +311,7 @@ mutation {
 }
 ```
 
-* To make this work with the actual app, we need to expect that the user will provide an artist name and not the id; we also need to be able to handle both cases when the artist already exists or doesn't exist.
+* TODO: To make this work with the actual app, we need to expect that the user will provide an artist name and not the id; we also need to be able to handle both cases when the artist already exists or doesn't exist.
 
 ### Remove boilerplate models, schema, and resolvers
 
