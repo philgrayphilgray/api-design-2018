@@ -729,6 +729,7 @@ input ArtistWhereInput {
 
 input ArtistWhereUniqueInput {
   id: ID
+  name: String
 }
 
 type BatchPayload {

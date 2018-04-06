@@ -1,9 +1,11 @@
 # import Album from "./generated/prisma.graphql"
+# import User from "./generated/prisma.graphql"
+# import Artist from "./generated/prisma.graphql"
 
 type Query {
   user(id: ID!): User
   users: [User!]!
-  artist(id: ID!): Artist
+  artist(name: String!): Artist
   artists: [Artist!]!
   album(id: ID!): Album
   albums: [Album!]!
