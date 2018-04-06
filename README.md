@@ -10,7 +10,8 @@
 * At this point, we're not implementing authentication or permissions
 * We need a `User` type and an `Album` type
 * The `User` type will just have a `username` and an `id`
-* The `Album` type will have an `id`, `title`, `artist`, `art`, `year`, and `rating`, consistent with the existing front-end
+* The `Album` type will have an `id`, `title`, `artist`, `art`, `year`, and `rating`, consistent with the existing front-end; perhaps also an `owner`
+* We should also add an `Artist` type so we can relate albums to artists and not just owners
 
 ### Bootstrap the Project with Prisma
 
@@ -39,6 +40,278 @@ select local
 cd <project name>
 yarn dev
 ```
+
+### Create the models
+
+```js
+// Boilerplate Post type not shown here; to be removed later
+
+type Album {
+  id: ID! @unique
+  title: String!
+  artist: Artist!
+  art: String!
+  year: String!
+  rating: Int!
+  owner: User!
+}
+
+type Artist {
+  id: ID! @unique
+  name: String!
+  works: [Album!]!
+}
+
+type User {
+  id: ID! @unique
+  username: String! @unique
+  collection: [Album!]!
+}
+```
+
+* Re-deploy. Prisma will auto-generate CRUD operations for the model in the db server.
+
+```js
+prisma deploy
+```
+
+* Start the dev server and test the DB server
+
+```bash
+cd <project name>
+yarn dev
+```
+
+* Create a User in Playground
+
+```js
+// request
+
+mutation{
+  createUser(data:{
+    username:"demouser"
+  }){
+    username
+    id
+  }
+}
+
+// response
+
+{
+  "data": {
+    "createUser": {
+      "username": "demouser",
+      "id": "cjfn7utjq0013076922n515h7"
+    }
+  }
+}
+```
+
+* Create an Artist
+
+```js
+// request
+
+mutation{
+  createArtist(data:{
+    name: "Sun Ra"
+  }){
+    name
+    id
+  }
+}
+
+// response
+
+{
+  "data": {
+    "createArtist": {
+      "name": "Sun Ra",
+      "id": "cjfn815li001b0769jy2ext7z"
+    }
+  }
+}
+```
+
+* Copy id's from the first user and first artist
+* Create an Album (using the copied fields)
+* Get back some fields to see how its populating with other types
+
+```js
+// request
+
+mutation {
+  createAlbum(data: {title: "Space is the Place", artist: {connect: {id: "cjfn815li001b0769jy2ext7z"}}, art: "https://upload.wikimedia.org/wikipedia/en/6/6c/Space_Is_The_Place_album_cover.jpg", year: "1973", rating: 5, owner: {connect: {id: "cjfn7utjq0013076922n515h7"}}}) {
+    title
+    artist {
+      name
+      works {
+        title
+      }
+    }
+    owner {
+      username
+      collection {
+        title
+      }
+    }
+  }
+}
+
+
+// response
+
+{
+  "data": {
+    "createAlbum": {
+      "title": "Space is the Place",
+      "artist": {
+        "name": "Sun Ra",
+        "works": [
+          {
+            "title": "Space is the Place"
+          }
+        ]
+      },
+      "owner": {
+        "username": "demouser",
+        "collection": [
+          {
+            "title": "Space is the Place"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+### Update app schema and write resolvers
+
+* Update the schema
+
+```js
+// irrelevant boilerplate removed from the example
+
+# import Album from "./generated/prisma.graphql"
+# import Artist from "./generated/prisma.graphql"
+# import User from "./generated/prisma.graphql"
+
+type Query {
+  user(id: ID!): User
+  users: [User!]!
+  artist(id: ID!): Artist
+  artists: [Artist!]!
+  album(id: ID!): Album
+  albums: [Album!]!
+}
+
+type Mutation {
+  createArtist(name: String!): Artist
+  createUser(username: String!): User
+  createAlbum(
+    title: String!
+    artist: String!
+    art: String!
+    year: String!
+    rating: Int!
+    owner: String!
+  ): Album
+}
+
+// note the artist and owner above are strings, expecting the id, not the object itself in this case
+```
+
+* Update the resolvers
+
+```js
+// inside index.js; irrelevant boilerplate removed
+
+const resolvers = {
+  Query: {
+    user(parent, { id }, ctx, info) {
+      return ctx.db.query.user({ where: { id } }, info);
+    },
+    users(parent, args, ctx, info) {
+      return ctx.db.query.users({}, info);
+    },
+    artist(parent, { id }, ctx, info) {
+      return ctx.db.query.artist({ where: { id }, info });
+    },
+    artists(parent, args, ctx, info) {
+      return ctx.db.query.artists({}, info);
+    },
+    album(parent, { id }, ctx, info) {
+      return ctx.db.query.album({ where: { id }, info });
+    },
+    albums(parent, args, ctx, info) {
+      return ctx.db.query.albums({}, info);
+    }
+  },
+  Mutation: {
+    createArtist(parent, { name }, ctx, info) {
+      return ctx.db.mutation.createArtist({
+        data: {
+          name
+        }
+      });
+    },
+    createUser(parent, { username }, ctx, info) {
+      return ctx.db.mutation.createUser({
+        data: {
+          username
+        }
+      });
+    },
+    createAlbum(
+      parent,
+      { title, artist, art, year, rating, owner },
+      ctx,
+      info
+    ) {
+      return ctx.db.mutation.createAlbum({
+        data: {
+          title,
+          artist: { connect: { id: artist } },
+          art,
+          year,
+          rating,
+          owner: { connect: { id: owner } }
+        }
+      });
+    }
+  }
+};
+```
+
+* Note above in the `createAlbum` mutation that we need to mimic the db connect for artist and owner; another option is to use resolver forwarding
+
+* Create an album from the app
+
+```js
+// request
+
+mutation {
+  createAlbum(title: "Lanquidity", artist: "cjfn815li001b0769jy2ext7z", art: "https://upload.wikimedia.org/wikipedia/en/2/22/Lanquidity.jpg", year: "1978", rating: 4, owner: "cjfnbyiqb001t0769191it5pq") {
+    title
+    id
+  }
+}
+
+// response
+
+{
+  "data": {
+    "createAlbum": {
+      "title": "Lanquidity",
+      "id": "cjfnd0u4t00230769n7n3c1gl"
+    }
+  }
+}
+```
+
+* To make this work with the actual app, we need to expect that the user will provide an artist name and not the id; we also need to be able to handle both cases when the artist already exists or doesn't exist
 
 ## GraphQL with Authentication API with Prisma 004_graphql-auth
 
