@@ -1,6 +1,4 @@
 # import Post from "./generated/prisma.graphql"
-# import User from "./generated/prisma.graphql"
-# import Artist from "./generated/prisma.graphql"
 # import Album from "./generated/prisma.graphql"
 
 type Query {
@@ -23,10 +21,10 @@ type Mutation {
   createUser(username: String!): User
   createAlbum(
     title: String!
-    artist: Artist!
+    artist: String!
     art: String!
     year: String!
     rating: Int!
-    owner: User!
+    owner: String!
   ): Album
 }
