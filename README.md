@@ -349,6 +349,47 @@ mutation {
     }
 ```
 
+* Now, when a user adds an album with a particular artist name, we will later be able to query by that artist name and see all the albums associated with that particular artist.
+* One caveat here is that different users could add the same album and now the artist will have duplicate records.
+* So, we might want to implement a kind of master copy for the album, which doesn't have as many fields -- just a title and an artist and an array of all the user instances of that album, so we can do things like averaging user ratings; this way, we can display a public page of all the albums in the db, and underneath that (if we choose), all the users who own that album and what their rating is; and other users can add it to their collection
+* To implement this, we need to create a new model and then perform the same kind of if/else checking whenever we create an album instance; if the master album doesn't exist, create it first; I don't want to change everywhere I've written the word album, so let's just call this new model `Master`
+* The `Artist` model will also need to be updated so that it's works point to `Master` and not `Album`
+* The updated datamodel will look something like this:
+
+```js
+type Album {
+  id: ID! @unique
+  title: String!
+  artist: Artist!
+  art: String!
+  year: String!
+  rating: Int!
+  owner: User!
+}
+
+type Master{
+  id: ID! @unique
+  title: String!
+  artist: Artist!
+  art: String!
+  year: String!
+  rating: Int!
+  copies: [Album!]!
+}
+
+type Artist {
+  id: ID! @unique
+  name: String! @unique
+  works: [Master!]!
+}
+
+type User {
+  id: ID! @unique
+  username: String! @unique
+  collection: [Album!]!
+}
+```
+
 ### Remove boilerplate models, schema, and resolvers
 
 * Remove boilerplate resolvers from `index.js`
