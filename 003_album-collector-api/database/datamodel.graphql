@@ -10,7 +10,7 @@ type Album {
 
 type Artist {
   id: ID! @unique
-  name: String!
+  name: String! @unique
   works: [Album!]!
 }
 

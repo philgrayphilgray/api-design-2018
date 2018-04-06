@@ -311,7 +311,43 @@ mutation {
 }
 ```
 
-* TODO: To make this work with the actual app, we need to expect that the user will provide an artist name and not the id; we also need to be able to handle both cases when the artist already exists or doesn't exist.
+* To make this work with the actual app, we need to expect that the user will provide an artist name and not the id; we also need to be able to handle both cases when the artist already exists or doesn't exist.
+
+* We should be able to achieve this with `upsert`; however this is not possible at this time as `upsert` is only available inside an update mutation, not a create mutation
+* The workaround Prisma provided is to perform and if/else check in the query resolver; if the artist exists, connect to it; otherwise create it: [Nested upsert in create mutations](https://github.com/graphcool/prisma/issues/2194)
+
+```js
+// inside index.js resolvers.Mutation object
+
+    async createAlbum(parent, { artist, owner, ...args }, ctx, info) {
+      const artistExists = await ctx.db.exists.Artist({
+        name: artist
+      });
+      if (!artistExists) {
+        return ctx.db.mutation.createAlbum(
+          {
+            data: {
+              ...args,
+              artist: { create: { name: artist } },
+              owner: { connect: { id: owner } }
+            }
+          },
+          info
+        );
+      } else {
+        return ctx.db.mutation.createAlbum(
+          {
+            data: {
+              ...args,
+              artist: { connect: { name: artist } },
+              owner: { connect: { id: owner } }
+            }
+          },
+          info
+        );
+      }
+    }
+```
 
 ### Remove boilerplate models, schema, and resolvers
 
