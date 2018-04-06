@@ -15,4 +15,5 @@ datamodel: datamodel.graphql
 seed:
   import: seed.graphql
 
+# cluster: phillip-gray-ccefc1/prisma-us1
 cluster: local
