@@ -12,6 +12,34 @@
 * The `User` type will just have a `username` and an `id`
 * The `Album` type will have an `id`, `title`, `artist`, `art`, `year`, and `rating`, consistent with the existing front-end
 
+### Bootstrap the Project with Prisma
+
+* Install Docker
+* Install Prisma
+* Start the local prisma service
+
+```bash
+npm install -g prisma
+prisma local start
+```
+
+* Bootstrap and deploy GraphQL server
+
+```bash
+prisma init <project-name>
+...
+select GraphQL server/full stack boilerplate (recommended)
+select node-basic
+select local
+```
+
+* Start the dev server
+
+```bash
+cd <project name>
+yarn dev
+```
+
 ## GraphQL with Authentication API with Prisma 004_graphql-auth
 
 ## Configurable Webpack Express/Mongo REST API
