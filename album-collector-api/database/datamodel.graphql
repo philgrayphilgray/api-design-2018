@@ -4,3 +4,25 @@ type Post {
   title: String!
   text: String!
 }
+
+type Album {
+  id: ID! @unique
+  title: String!
+  artist: Artist!
+  art: String!
+  year: String!
+  rating: Int!
+  owner: User!
+}
+
+type Artist {
+  id: ID! @unique
+  name: String!
+  works: [Album!]!
+}
+
+type User {
+  id: ID! @unique
+  username: String! @unique
+  collection: [Album!]!
+}
